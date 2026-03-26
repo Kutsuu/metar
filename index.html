@@ -1,0 +1,1101 @@
+﻿<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>METAR Tolkija</title>
+  <style>
+    :root {
+      --bg-top: #05203c;
+      --bg-mid: #0b3d5d;
+      --bg-bottom: #d6ecff;
+      --panel: rgba(248, 252, 255, 0.96);
+      --panel-strong: #ffffff;
+      --text: #102033;
+      --muted: #53708e;
+      --accent: #0e7490;
+      --accent-strong: #0f766e;
+      --line: rgba(83, 112, 142, 0.25);
+      --shadow: 0 20px 60px rgba(3, 19, 33, 0.24);
+      --warning: #b45309;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.28), transparent 28%),
+        radial-gradient(circle at left 20%, rgba(133, 212, 255, 0.2), transparent 26%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 46%, var(--bg-bottom) 100%);
+      padding: 32px 18px 48px;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      color: #eef8ff;
+      margin-bottom: 24px;
+      animation: rise 700ms ease;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-size: 0.74rem;
+      padding: 6px 10px;
+      border: 1px solid rgba(238, 248, 255, 0.22);
+      border-radius: 999px;
+      backdrop-filter: blur(10px);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 0.95;
+      max-width: 10ch;
+    }
+
+    .lead {
+      max-width: 62ch;
+      color: rgba(238, 248, 255, 0.88);
+      font-size: 1.05rem;
+      line-height: 1.55;
+      margin: 18px 0 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .composer {
+      padding: 22px;
+      position: sticky;
+      top: 18px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 1.3rem;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      resize: vertical;
+      font: 500 0.98rem/1.5 "Consolas", "Courier New", monospace;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.92);
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: rgba(14, 116, 144, 0.6);
+      box-shadow: 0 0 0 4px rgba(14, 116, 144, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: 700 0.96rem/1 "Segoe UI", sans-serif;
+      cursor: pointer;
+      transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      color: #effcff;
+      background: linear-gradient(135deg, #0e7490, #155e75);
+      box-shadow: 0 12px 24px rgba(21, 94, 117, 0.28);
+    }
+
+    .secondary {
+      color: var(--accent);
+      background: rgba(14, 116, 144, 0.08);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .lookup {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(14, 116, 144, 0.05);
+      border: 1px solid rgba(14, 116, 144, 0.12);
+    }
+
+    .lookup-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .lookup input {
+      flex: 1 1 180px;
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      font: 700 1rem/1 "Consolas", "Courier New", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .lookup small {
+      display: block;
+      margin-top: 10px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .chip {
+      border: 1px solid rgba(14, 116, 144, 0.18);
+      background: rgba(14, 116, 144, 0.06);
+      color: var(--accent);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .results {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .empty {
+      padding: 28px;
+      border: 1px dashed rgba(83, 112, 142, 0.35);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .report {
+      background: var(--panel-strong);
+      border-radius: 24px;
+      border: 1px solid rgba(16, 32, 51, 0.08);
+      overflow: hidden;
+      animation: rise 500ms ease;
+    }
+
+    .report-head {
+      padding: 18px 20px;
+      background:
+        linear-gradient(135deg, rgba(14, 116, 144, 0.1), rgba(21, 94, 117, 0.02)),
+        #f8fcff;
+      border-bottom: 1px solid rgba(83, 112, 142, 0.16);
+    }
+
+    .report-head-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    }
+
+    .report-head h3 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .raw {
+      margin-top: 10px;
+      color: var(--muted);
+      font: 0.88rem/1.45 "Consolas", "Courier New", monospace;
+      word-break: break-word;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--accent-strong);
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.01em;
+    }
+
+    .report-body {
+      padding: 18px 20px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid rgba(83, 112, 142, 0.18);
+      border-radius: 18px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(247, 251, 255, 0.9), rgba(255, 255, 255, 1));
+    }
+
+    .card h4 {
+      margin: 0 0 10px;
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+
+    .list li + li {
+      margin-top: 7px;
+    }
+
+    .warning {
+      color: var(--warning);
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      font-size: 0.87rem;
+      color: rgba(238, 248, 255, 0.8);
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .composer {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="eyebrow">METAR decoder</div>
+      <h1>Ilmateade lahti kirjutatud inimkeeles.</h1>
+      <p class="lead">
+        Kleebi sisse uks voi mitu METAR-it korraga. Leht tunneb ara levinud Euroopa ja USA formaadid,
+        selgitab tuule, nahtavuse, pilved, temperatuuri, rohunaitaja ning lisamarkused.
+      </p>
+    </section>
+
+    <section class="layout">
+      <div class="panel composer">
+        <h2>Sisend</h2>
+        <p>Void kas otsida lennuvälja ICAO koodi järgi voi kleepida METAR-id käsitsi. Parser proovib mitu sonumit ise plokkideks jagada.</p>
+        <div class="lookup">
+          <h2 style="font-size:1.05rem; margin-bottom:0;">Otsi ICAO jargi</h2>
+          <div class="lookup-row">
+            <input id="icao-input" type="text" maxlength="4" placeholder="EETN" />
+            <button class="primary" id="fetch-btn" type="button">Too viimane METAR</button>
+          </div>
+          <small id="fetch-status">Sisesta 4-taheline ICAO kood, naiteks <strong>EETN</strong>, <strong>KLAX</strong> voi <strong>EDDF</strong>. Andmed loetakse GitHub Pagesi jaoks eeluuendatud failist.</small>
+        </div>
+        <textarea id="metar-input" spellcheck="false"></textarea>
+        <div class="actions">
+          <button class="primary" id="decode-btn">Tolgenda METAR</button>
+          <button class="secondary" id="sample-btn" type="button">Lae naited</button>
+          <button class="secondary" id="clear-btn" type="button">Puhasta</button>
+        </div>
+        <div class="chips" id="sample-chips"></div>
+      </div>
+
+      <div class="panel results" id="results">
+        <div class="empty">
+          <h2>Valmis tolgendama</h2>
+          <p>Siia ilmub iga leitud METAR-i kohta eraldi kaart koos inimloetava kokkuvottega.</p>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      Toimib brauseris kohapeal. Tulemused on oppeline lahtiseletus, mitte ametlik lennundusbriefing.
+    </p>
+  </div>
+
+  <script>
+    const sampleMetars = [
+      "METAR EETN 260750Z 20014KT 9999 FEW024 07/01 Q0997 NOSIG",
+      "METAR EPWA 260800Z 33010KT 9999 FEW018 07/03 Q1004 NOSIG",
+      "METAR KLAX 260753Z 11006KT 8SM FEW005 BKN007 16/14 A2995 RMK AO2 SLP142 T01560139 402000150",
+      "METAR EDDF 260820Z AUTO 31010KT 280V340 9999 FEW026 SCT035 06/M00 Q1014 NOSIG",
+      "METAR ENGM 260820Z 32005KT 250V010 CAVOK 06/M05 Q0992 NOSIG",
+      "METAR EEPU 260820Z AUTO 20015KT 9999 FEW019/// 05/03 Q1000"
+    ];
+
+    const weatherIntensityMap = {
+      "-": "nork",
+      "+": "tugev"
+    };
+
+    const descriptorMap = {
+      MI: "madal",
+      PR: "osaline",
+      BC: "lapiline",
+      DR: "madal triiviv",
+      BL: "korgele puhutud",
+      SH: "hoovihm",
+      TS: "aikega seotud",
+      FZ: "jaatuv",
+      VC: "laheduses"
+    };
+
+    const phenomenonMap = {
+      DZ: "uduvihm",
+      RA: "vihm",
+      SN: "lumi",
+      SG: "lumeterad",
+      IC: "jaakristallid",
+      PL: "jaavihm",
+      GR: "rahe",
+      GS: "lumerahe",
+      UP: "maarata sademed",
+      BR: "vine",
+      FG: "udu",
+      FU: "suits",
+      VA: "vulkaaniline tuhk",
+      DU: "tolm",
+      SA: "liiv",
+      HZ: "hagu",
+      PY: "pritsmed",
+      PO: "tolmu- voi liivakeerised",
+      SQ: "tuuleiilid",
+      FC: "lehterpilv voi tromb",
+      SS: "liivatorm",
+      DS: "tolmutorm"
+    };
+
+    const cloudCoverMap = {
+      SKC: "taevas selge",
+      CLR: "taevas selge",
+      NSC: "olulisi pilvi ei ole",
+      NCD: "pilvi ei tuvastatud",
+      FEW: "mone pilveribaga",
+      SCT: "hajusalt pilvine",
+      BKN: "margatavalt pilvine",
+      OVC: "taies ulatuses pilvine",
+      VV: "vertikaalne nahtavus piiratud"
+    };
+
+    const trendMap = {
+      NOSIG: "olulisi muutusi ei ole oodata",
+      BECMG: "tingimused muutuvad tasapisi",
+      TEMPO: "ajutised muutused on voimalikud"
+    };
+
+    const input = document.getElementById("metar-input");
+    const icaoInput = document.getElementById("icao-input");
+    const fetchStatus = document.getElementById("fetch-status");
+    const results = document.getElementById("results");
+    const sampleChips = document.getElementById("sample-chips");
+    let metarDatasetPromise = null;
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function knotsToMs(knots) {
+      return (knots * 0.514444).toFixed(1);
+    }
+
+    function milesToKm(miles) {
+      return (miles * 1.60934).toFixed(1);
+    }
+
+    function splitMetars(rawText) {
+      const normalized = rawText.replace(/\r/g, " ").replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+      if (!normalized) return [];
+
+      const tokens = normalized.split(" ");
+      const reports = [];
+      let current = [];
+
+      for (const token of tokens) {
+        if ((token === "METAR" || token === "SPECI") && current.length) {
+          reports.push(current.join(" "));
+          current = [token];
+          continue;
+        }
+        current.push(token);
+      }
+
+      if (current.length) {
+        reports.push(current.join(" "));
+      }
+
+      return reports.map((report) => report.trim()).filter(Boolean);
+    }
+
+    function normalizeReport(report) {
+      return report
+        .trim()
+        .replace(/\s+/g, " ")
+        .replace(/^(METAR|SPECI)\s+/i, "")
+        .toUpperCase();
+    }
+
+    function parseTime(token) {
+      const match = token.match(/^(\d{2})(\d{2})(\d{2})Z$/);
+      if (!match) return null;
+      return {
+        raw: token,
+        day: Number(match[1]),
+        hour: match[2],
+        minute: match[3],
+        description: `${match[1]}. paeval kell ${match[2]}:${match[3]} UTC`
+      };
+    }
+
+    function parseWind(token, nextToken) {
+      const match = token.match(/^(\d{3}|VRB)(\d{2,3})(G(\d{2,3}))?(KT|MPS|KMH)$/);
+      if (!match) return null;
+
+      const unit = match[5];
+      const speed = Number(match[2]);
+      const gust = match[4] ? Number(match[4]) : null;
+      const direction = match[1];
+      let description = "";
+
+      if (direction === "VRB") {
+        description = `Tuul on muutliku suunaga, kiirus ${speed} ${unit}.`;
+      } else {
+        description = `Tuul puhub suunast ${direction} °, kiirusega ${speed} ${unit}.`;
+      }
+
+      if (gust !== null) {
+        description += ` Puhangud ulatuvad ${gust} ${unit}.`;
+      }
+
+      if (unit === "KT") {
+        description += ` See on umbes ${knotsToMs(speed)} m/s.`;
+      }
+
+      let consumed = 1;
+      let variation = null;
+      if (nextToken && /^\d{3}V\d{3}$/.test(nextToken)) {
+        consumed = 2;
+        variation = nextToken;
+        const [, from, to] = nextToken.match(/^(\d{3})V(\d{3})$/);
+        description += ` Suund koigub vahemikus ${from} ° kuni ${to} °.`;
+      }
+
+      return {
+        raw: token,
+        description,
+        consumed,
+        variation
+      };
+    }
+
+    function parseVisibility(token, nextToken) {
+      if (token === "CAVOK") {
+        return {
+          raw: token,
+          description: "CAVOK: nahtavus vahemalt 10 km, olulisi pilvi ega olulist ilma ei ole.",
+          cavok: true,
+          consumed: 1
+        };
+      }
+
+      if (/^\d{4}$/.test(token)) {
+        const meters = Number(token);
+        if (meters >= 9999) {
+          return {
+            raw: token,
+            description: "Nahtavus on vahemalt 10 km.",
+            consumed: 1
+          };
+        }
+        return {
+          raw: token,
+          description: `Nahtavus on ${meters} m.`,
+          consumed: 1
+        };
+      }
+
+      const splitUsMatch = token.match(/^(\d+)$/) && nextToken ? nextToken.match(/^(\d+)\/(\d+)SM$/) : null;
+      if (splitUsMatch) {
+        const miles = Number(token) + Number(splitUsMatch[1]) / Number(splitUsMatch[2]);
+        return {
+          raw: `${token} ${nextToken}`,
+          description: `Nahtavus on ${miles} SM ehk umbes ${milesToKm(miles)} km.`,
+          consumed: 2
+        };
+      }
+
+      const usMatch = token.match(/^(\d+)\/(\d+)SM$/);
+      if (usMatch) {
+        const numerator = Number(usMatch[1]);
+        const denominator = Number(usMatch[2]);
+        const miles = numerator / denominator;
+        return {
+          raw: token,
+          description: `Nahtavus on ${miles} SM ehk umbes ${milesToKm(miles)} km.`,
+          consumed: 1
+        };
+      }
+
+      const wholeMatch = token.match(/^(\d+)SM$/);
+      if (wholeMatch) {
+        const miles = Number(wholeMatch[1]);
+        return {
+          raw: token,
+          description: `Nahtavus on ${miles} SM ehk umbes ${milesToKm(miles)} km.`,
+          consumed: 1
+        };
+      }
+
+      return null;
+    }
+
+    function parseWeather(token) {
+      if (!/^[\+\-]?VC?[A-Z]{2,}$/.test(token)) return null;
+
+      let rest = token;
+      const pieces = [];
+
+      if (weatherIntensityMap[rest[0]]) {
+        pieces.push(weatherIntensityMap[rest[0]]);
+        rest = rest.slice(1);
+      }
+
+      const descriptors = [];
+      let matchedDescriptor = true;
+      while (matchedDescriptor && rest.length >= 2) {
+        matchedDescriptor = false;
+        const code = rest.slice(0, 2);
+        if (descriptorMap[code]) {
+          descriptors.push(descriptorMap[code]);
+          rest = rest.slice(2);
+          matchedDescriptor = true;
+        }
+      }
+
+      const phenomena = [];
+      while (rest.length >= 2) {
+        const code = rest.slice(0, 2);
+        if (!phenomenonMap[code]) {
+          return null;
+        }
+        phenomena.push(phenomenonMap[code]);
+        rest = rest.slice(2);
+      }
+
+      if (!phenomena.length || rest.length) {
+        return null;
+      }
+
+      pieces.push(...descriptors, ...phenomena);
+      return {
+        raw: token,
+        description: pieces.join(" ")
+      };
+    }
+
+    function parseCloud(token) {
+      if (token === "CAVOK") {
+        return {
+          raw: token,
+          description: cloudCoverMap.SKC
+        };
+      }
+
+      if (cloudCoverMap[token]) {
+        return {
+          raw: token,
+          description: cloudCoverMap[token]
+        };
+      }
+
+      const match = token.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3}|\/\/\/)(CB|TCU)?$/);
+      if (!match) return null;
+
+      const cover = cloudCoverMap[match[1]];
+      const heightCode = match[2];
+      const cloudType = match[3];
+      let description = cover;
+
+      if (heightCode === "///") {
+        description += ", aga korgus ei ole teatatud.";
+      } else {
+        const feet = Number(heightCode) * 100;
+        const meters = Math.round(feet * 0.3048);
+        description += ` umbes ${feet} ft ehk ${meters} m kohal.`;
+      }
+
+      if (cloudType === "CB") {
+        description += " Tegemist on raju- ehk cumulonimbus-pilvega.";
+      }
+      if (cloudType === "TCU") {
+        description += " Tegemist on tornja raksupilvega.";
+      }
+
+      return {
+        raw: token,
+        description
+      };
+    }
+
+    function parseTemperature(token) {
+      const match = token.match(/^(M?\d{2})\/(M?\d{2}|XX|\/\/)$/);
+      if (!match) return null;
+
+      const tempValue = decodeSignedTemperature(match[1]);
+      const dewValue = match[2] === "XX" || match[2] === "//" ? null : decodeSignedTemperature(match[2]);
+      const dewText = dewValue === null ? "kastepunkt puudub" : `kastepunkt ${dewValue} °C`;
+
+      return {
+        raw: token,
+        description: `Temperatuur ${tempValue} °C, ${dewText}.`
+      };
+    }
+
+    function decodeSignedTemperature(value) {
+      return value.startsWith("M") ? -Number(value.slice(1)) : Number(value);
+    }
+
+    function parsePressure(token) {
+      const qMatch = token.match(/^Q(\d{4})$/);
+      if (qMatch) {
+        return {
+          raw: token,
+          description: `Rohk merepinnale taandatuna on ${Number(qMatch[1])} hPa.`
+        };
+      }
+
+      const aMatch = token.match(/^A(\d{4})$/);
+      if (aMatch) {
+        const inches = `${aMatch[1].slice(0, 2)}.${aMatch[1].slice(2)}`;
+        return {
+          raw: token,
+          description: `Altimeetri nait on ${inches} inHg.`
+        };
+      }
+
+      return null;
+    }
+
+    function parseTrend(token) {
+      if (trendMap[token]) {
+        return {
+          raw: token,
+          description: trendMap[token]
+        };
+      }
+
+      const probMatch = token.match(/^PROB(\d{2})$/);
+      if (probMatch) {
+        return {
+          raw: token,
+          description: `Jargneva muutuse toenaosus on ${probMatch[1]} protsenti.`
+        };
+      }
+
+      return null;
+    }
+
+    function parseRemarkToken(token) {
+      if (token === "AO1") return "automaatjaam ilma sademesensorita";
+      if (token === "AO2") return "automaatjaam sademesensoriga";
+      if (/^SLP\d{3}$/.test(token)) return `merepinnale taandatud rohk lisakoodina (${token.slice(3)})`;
+      if (/^T\d{8}$/.test(token)) return "tapsustatud temperatuuri- ja kastepunktiandmed";
+      if (/^4\d{8}$/.test(token)) return "maksimum- ja miinimumtemperatuuri lisaandmed";
+      if (/^P\d{4}$/.test(token)) return "sademete hulk lisaformaadis";
+      return token;
+    }
+
+    function interpretReport(report) {
+      const normalized = normalizeReport(report);
+      const tokens = normalized.split(" ").filter(Boolean);
+
+      if (tokens.length < 3) {
+        return {
+          raw: report,
+          error: "Liiga luhi sonum. METAR-is peaks olema vahemalt jaam, aeg ja tuul."
+        };
+      }
+
+      let index = 0;
+      const station = tokens[index++] || "";
+      const time = parseTime(tokens[index++] || "");
+      const flags = [];
+      const summary = {
+        station,
+        time: time ? time.description : "vaatlusaega ei saanud tuvastada",
+        wind: "Tuuleandmed puuduvad.",
+        visibility: "Nahtavus puudub.",
+        weather: [],
+        clouds: [],
+        temperature: "Temperatuuriandmed puuduvad.",
+        pressure: "Rohunait puudub.",
+        trend: [],
+        remarks: [],
+        flags
+      };
+
+      while (index < tokens.length && /^(AUTO|COR|NIL)$/.test(tokens[index])) {
+        const flag = tokens[index++];
+        if (flag === "AUTO") flags.push("Automaatne vaatlus");
+        if (flag === "COR") flags.push("Parandatud sonum");
+        if (flag === "NIL") flags.push("Vaatus puudub");
+      }
+
+      const wind = parseWind(tokens[index] || "", tokens[index + 1]);
+      if (wind) {
+        summary.wind = wind.description;
+        index += wind.consumed;
+      }
+
+      const visibility = parseVisibility(tokens[index] || "", tokens[index + 1]);
+      if (visibility) {
+        summary.visibility = visibility.description;
+        index += visibility.consumed || 1;
+        if (visibility.cavok) {
+          summary.clouds.push("Pilved puuduvad voi neid ei peeta oluliseks kuni 5000 ft.");
+        }
+      }
+
+      let inRemarks = false;
+
+      while (index < tokens.length) {
+        const token = tokens[index];
+
+        if (token === "RMK") {
+          inRemarks = true;
+          index += 1;
+          continue;
+        }
+
+        if (inRemarks) {
+          summary.remarks.push(parseRemarkToken(token));
+          index += 1;
+          continue;
+        }
+
+        const trend = parseTrend(token);
+        if (trend) {
+          summary.trend.push(trend.description);
+          index += 1;
+          continue;
+        }
+
+        if (/^(FM|TL|AT)\d{2,6}$/.test(token)) {
+          summary.trend.push(`Ajamarker ${token}.`);
+          index += 1;
+          continue;
+        }
+
+        const weather = parseWeather(token);
+        if (weather) {
+          summary.weather.push(weather.description);
+          index += 1;
+          continue;
+        }
+
+        const cloud = parseCloud(token);
+        if (cloud) {
+          summary.clouds.push(cloud.description);
+          index += 1;
+          continue;
+        }
+
+        const temperature = parseTemperature(token);
+        if (temperature) {
+          summary.temperature = temperature.description;
+          index += 1;
+          continue;
+        }
+
+        const pressure = parsePressure(token);
+        if (pressure) {
+          summary.pressure = pressure.description;
+          index += 1;
+          continue;
+        }
+
+        if (/^\d{3}V\d{3}$/.test(token)) {
+          summary.remarks.push(`Tuulesuuna koikumine ${token}.`);
+          index += 1;
+          continue;
+        }
+
+        if (/^(METAR|SPECI)$/.test(token)) {
+          break;
+        }
+
+        summary.remarks.push(`Tuvastamata osa: ${token}`);
+        index += 1;
+      }
+
+      if (!summary.weather.length) {
+        summary.weather.push("Olulist ilmanahtust ei teatatud.");
+      }
+
+      if (!summary.clouds.length) {
+        summary.clouds.push("Pilveinfo puudub voi taevas on selge.");
+      }
+
+      if (!summary.trend.length) {
+        summary.trend.push("Trendiosa puudub.");
+      }
+
+      if (!summary.remarks.length) {
+        summary.remarks.push("Lisamarkusi ei ole.");
+      }
+
+      return {
+        raw: normalized,
+        summary
+      };
+    }
+
+    function renderReport(report, order) {
+      if (report.error) {
+        return `
+          <article class="report">
+            <div class="report-head">
+              <div class="report-head-top">
+                <h3>Sonum ${order}</h3>
+                <span class="tag warning">Viga</span>
+              </div>
+              <div class="raw">${escapeHtml(report.raw)}</div>
+            </div>
+            <div class="report-body">
+              <section class="card">
+                <h4>Selgitus</h4>
+                <p class="warning">${escapeHtml(report.error)}</p>
+              </section>
+            </div>
+          </article>
+        `;
+      }
+
+      const { summary } = report;
+      const flags = summary.flags.length ? summary.flags.join(" | ") : "Tavaline vaatlus";
+
+      return `
+        <article class="report">
+          <div class="report-head">
+            <div class="report-head-top">
+              <h3>${escapeHtml(summary.station)} | ${escapeHtml(summary.time)}</h3>
+              <span class="tag">${escapeHtml(flags)}</span>
+            </div>
+            <div class="raw">${escapeHtml(report.raw)}</div>
+          </div>
+          <div class="report-body">
+            <section class="card">
+              <h4>Tuul ja nahtavus</h4>
+              <p>${escapeHtml(summary.wind)}</p>
+              <p style="margin-top:10px">${escapeHtml(summary.visibility)}</p>
+            </section>
+            <section class="card">
+              <h4>Ilmanahtused</h4>
+              <ul class="list">${summary.weather.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            </section>
+            <section class="card">
+              <h4>Pilved</h4>
+              <ul class="list">${summary.clouds.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            </section>
+            <section class="card">
+              <h4>Temperatuur ja rohk</h4>
+              <p>${escapeHtml(summary.temperature)}</p>
+              <p style="margin-top:10px">${escapeHtml(summary.pressure)}</p>
+            </section>
+            <section class="card">
+              <h4>Trend</h4>
+              <ul class="list">${summary.trend.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            </section>
+            <section class="card">
+              <h4>Markused</h4>
+              <ul class="list">${summary.remarks.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            </section>
+          </div>
+        </article>
+      `;
+    }
+
+    function decodeInput() {
+      const rawText = input.value.trim();
+      if (!rawText) {
+        results.innerHTML = `
+          <div class="empty">
+            <h2>Sisesta METAR</h2>
+            <p>Praegu ei ole midagi tolgendada. Kleebi vasakule sonum ja vajuta nuppu.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const reports = splitMetars(rawText);
+      if (!reports.length) {
+        results.innerHTML = `
+          <div class="empty">
+            <h2>Sonumit ei leitud</h2>
+            <p>Parser ei leidnud sisendist yhtki tolgendatavat METAR-it.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const interpreted = reports.map(interpretReport);
+      results.innerHTML = interpreted.map((report, index) => renderReport(report, index + 1)).join("");
+    }
+
+    async function loadMetarDataset() {
+      if (!metarDatasetPromise) {
+        metarDatasetPromise = fetch("./data/metars.json", { cache: "no-store" }).then(async (response) => {
+          if (!response.ok) {
+            throw new Error("METAR-andmefaili laadimine ebaonnestus.");
+          }
+          return response.json();
+        });
+      }
+      return metarDatasetPromise;
+    }
+
+    async function fetchMetarByIcao() {
+      const icao = icaoInput.value.trim().toUpperCase();
+      if (!/^[A-Z]{4}$/.test(icao)) {
+        fetchStatus.innerHTML = 'Palun sisesta korrektne 4-taheline ICAO kood.';
+        icaoInput.focus();
+        return;
+      }
+
+      const button = document.getElementById("fetch-btn");
+      button.disabled = true;
+      button.style.opacity = "0.7";
+      fetchStatus.textContent = `${icao}: otsin eeluuendatud andmestikust...`;
+
+      try {
+        const payload = await loadMetarDataset();
+        const item = payload.stations ? payload.stations[icao] : null;
+
+        if (!item || !item.rawOb) {
+          throw new Error("Selle ICAO koodi jaoks ei leidunud andmestikus aktiivset METAR-it.");
+        }
+
+        input.value = item.rawOb;
+        const updatedAt = payload.updatedAt ? ` Andmestik uuendatud ${payload.updatedAt}.` : "";
+        fetchStatus.innerHTML = `${icao}: leitud <strong>${escapeHtml(item.rawOb)}</strong>.${updatedAt}`;
+        decodeInput();
+      } catch (error) {
+        fetchStatus.textContent = `${icao}: ${error.message}`;
+      } finally {
+        button.disabled = false;
+        button.style.opacity = "1";
+      }
+    }
+
+    document.getElementById("decode-btn").addEventListener("click", decodeInput);
+    document.getElementById("fetch-btn").addEventListener("click", fetchMetarByIcao);
+    document.getElementById("sample-btn").addEventListener("click", () => {
+      input.value = sampleMetars.join("\n");
+      decodeInput();
+    });
+    document.getElementById("clear-btn").addEventListener("click", () => {
+      input.value = "";
+      decodeInput();
+      input.focus();
+    });
+
+    input.value = sampleMetars.join("\n");
+
+    sampleMetars.forEach((sample, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "chip";
+      button.textContent = `Naide ${index + 1}`;
+      button.addEventListener("click", () => {
+        input.value = sample;
+        decodeInput();
+      });
+      sampleChips.appendChild(button);
+    });
+
+    icaoInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        fetchMetarByIcao();
+      }
+    });
+
+    decodeInput();
+  </script>
+</body>
+</html>
