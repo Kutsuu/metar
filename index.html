@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="et">
 <head>
   <meta charset="UTF-8" />
@@ -165,39 +165,6 @@
       margin-top: 18px;
     }
 
-    .lookup {
-      margin-top: 18px;
-      padding: 16px;
-      border-radius: 20px;
-      background: rgba(14, 116, 144, 0.05);
-      border: 1px solid rgba(14, 116, 144, 0.12);
-    }
-
-    .lookup-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-
-    .lookup input {
-      flex: 1 1 180px;
-      min-width: 0;
-      padding: 12px 14px;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      font: 700 1rem/1 "Consolas", "Courier New", monospace;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .lookup small {
-      display: block;
-      margin-top: 10px;
-      color: var(--muted);
-      line-height: 1.45;
-    }
-
     .chip {
       border: 1px solid rgba(14, 116, 144, 0.18);
       background: rgba(14, 116, 144, 0.06);
@@ -354,15 +321,7 @@
     <section class="layout">
       <div class="panel composer">
         <h2>Sisend</h2>
-        <p>Void kas otsida lennuvälja ICAO koodi järgi voi kleepida METAR-id käsitsi. Parser proovib mitu sonumit ise plokkideks jagada.</p>
-        <div class="lookup">
-          <h2 style="font-size:1.05rem; margin-bottom:0;">Otsi ICAO jargi</h2>
-          <div class="lookup-row">
-            <input id="icao-input" type="text" maxlength="4" placeholder="EETN" />
-            <button class="primary" id="fetch-btn" type="button">Too viimane METAR</button>
-          </div>
-          <small id="fetch-status">Sisesta 4-taheline ICAO kood, naiteks <strong>EETN</strong>, <strong>KLAX</strong> voi <strong>EDDF</strong>. Andmed loetakse GitHub Pagesi jaoks eeluuendatud failist.</small>
-        </div>
+        <p>Void kasutada eraldi ridu voi ka kokku kleebitud sonumeid. Parser proovib need ise plokkideks jagada.</p>
         <textarea id="metar-input" spellcheck="false"></textarea>
         <div class="actions">
           <button class="primary" id="decode-btn">Tolgenda METAR</button>
@@ -456,11 +415,8 @@
     };
 
     const input = document.getElementById("metar-input");
-    const icaoInput = document.getElementById("icao-input");
-    const fetchStatus = document.getElementById("fetch-status");
     const results = document.getElementById("results");
     const sampleChips = document.getElementById("sample-chips");
-    let metarDatasetPromise = null;
 
     function escapeHtml(text) {
       return text
@@ -1018,53 +974,7 @@
       results.innerHTML = interpreted.map((report, index) => renderReport(report, index + 1)).join("");
     }
 
-    async function loadMetarDataset() {
-      if (!metarDatasetPromise) {
-        metarDatasetPromise = fetch("./data/metars.json", { cache: "no-store" }).then(async (response) => {
-          if (!response.ok) {
-            throw new Error("METAR-andmefaili laadimine ebaonnestus.");
-          }
-          return response.json();
-        });
-      }
-      return metarDatasetPromise;
-    }
-
-    async function fetchMetarByIcao() {
-      const icao = icaoInput.value.trim().toUpperCase();
-      if (!/^[A-Z]{4}$/.test(icao)) {
-        fetchStatus.innerHTML = 'Palun sisesta korrektne 4-taheline ICAO kood.';
-        icaoInput.focus();
-        return;
-      }
-
-      const button = document.getElementById("fetch-btn");
-      button.disabled = true;
-      button.style.opacity = "0.7";
-      fetchStatus.textContent = `${icao}: otsin eeluuendatud andmestikust...`;
-
-      try {
-        const payload = await loadMetarDataset();
-        const item = payload.stations ? payload.stations[icao] : null;
-
-        if (!item || !item.rawOb) {
-          throw new Error("Selle ICAO koodi jaoks ei leidunud andmestikus aktiivset METAR-it.");
-        }
-
-        input.value = item.rawOb;
-        const updatedAt = payload.updatedAt ? ` Andmestik uuendatud ${payload.updatedAt}.` : "";
-        fetchStatus.innerHTML = `${icao}: leitud <strong>${escapeHtml(item.rawOb)}</strong>.${updatedAt}`;
-        decodeInput();
-      } catch (error) {
-        fetchStatus.textContent = `${icao}: ${error.message}`;
-      } finally {
-        button.disabled = false;
-        button.style.opacity = "1";
-      }
-    }
-
     document.getElementById("decode-btn").addEventListener("click", decodeInput);
-    document.getElementById("fetch-btn").addEventListener("click", fetchMetarByIcao);
     document.getElementById("sample-btn").addEventListener("click", () => {
       input.value = sampleMetars.join("\n");
       decodeInput();
@@ -1087,12 +997,6 @@
         decodeInput();
       });
       sampleChips.appendChild(button);
-    });
-
-    icaoInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        fetchMetarByIcao();
-      }
     });
 
     decodeInput();
